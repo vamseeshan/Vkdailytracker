@@ -1,9 +1,30 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>Daily Tracker</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Quests Tracker</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Daily Tracker</h1>
-    <p>This is a simple daily tracker.</p>
+    <header>
+        <h1>Daily Quests Tracker</h1>
+    </header>
+    <main>
+        <section>
+            <h2>Your Daily Quests</h2>
+            <ul id="quests-list">
+                <li><input type="checkbox"> Quest 1</li>
+                <li><input type="checkbox"> Quest 2</li>
+                <li><input type="checkbox"> Quest 3</li>
+            </ul>
+        </section>
+        <section>
+            <h2>Add New Quest</h2>
+            <input type="text" id="new-quest" placeholder="Enter new quest">
+            <button id="add-quest">Add Quest</button>
+        </section>
+    </main>
+    <script src="script.js"></script>
 </body>
 </html>
