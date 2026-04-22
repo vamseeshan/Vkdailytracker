@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#080808" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Daily Quests" />
+  <title>Daily Quests</title>
+
+  <!-- Inline manifest via JS blob — no server needed -->
+  <script>
+    const manifest = {
+      name: "Daily Quests",
+      short_name: "Quests",
+      description: "Track your daily habits like a game",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#080808",
+      theme_color: "#080808",
+      orientation: "portrait",
+      icons: [
+        { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%23080808'/%3E%3Ccircle cx='96' cy='96' r='70' fill='none' stroke='%232dd4bf' stroke-width='8'/%3E%3Ccircle cx='96' cy='96' r='50' fill='none' stroke='%23333' stroke-width='3'/%3E%3Ctext x='96' y='108' font-family='monospace' font-size='36' fill='%232dd4bf' text-anchor='middle'%3E✦%3C/text%3E%3C/svg%3E", sizes: "192x192", type: "image/svg+xml" },
+        { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%23080808'/%3E%3Ccircle cx='256' cy='256' r='190' fill='none' stroke='%232dd4bf' stroke-width='20'/%3E%3Ccircle cx='256' cy='256' r='130' fill='none' stroke='%23333' stroke-width='8'/%3E%3Ctext x='256' y='285' font-family='monospace' font-size='100' fill='%232dd4bf' text-anchor='middle'%3E✦%3C/text%3E%3C/svg%3E", sizes: "512x512", type: "image/svg+xml" }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blob);
+    document.write('<link rel="manifest" href="' + manifestURL + '">');
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080808;
+      --bg2: #0e0e0e;
+      --border: #111;
+      --border2: #1c1c1c;
+      --teal: #2dd4bf;
+      --teal-dim: #1a4a45;
+      --teal-glow: rgba(45,212,191,0.15);
+      --grey1: #aaa;
+      --grey2: #555;
+      --grey3: #333;
+      --grey4: #2a2a2a;
+      --grey5: #1e1e1e;
+      --font: 'Courier Prime', 'Courier New', monospace;
+    }
+    html, body {
+      background: var(--bg);
+      color: #fff;
+      font-family: var(--font);
+      min-height: 100vh;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+    #app {
+      max-width: 390px;
+      margin: 0 auto;
+      padding-bottom: 90px;
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    #header {
+      padding: 42px 24px 0;
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    .day-label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--grey3);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .date-label {
+      font-size: 28px;
+      font-weight: 700;
+      color: #e0e0e0;
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+    .score-pct {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--grey3);
+      line-height: 1;
+      letter-spacing: -1px;
+      text-align: right;
+      transition: color 0.3s;
+    }
+    .score-pct span { font-size: 14px; color: var(--grey3); }
+    .score-pct.all-done { color: #e0e0e0; }
+    .score-sub {
+      font-size: 9px;
+      color: var(--grey4);
+      letter-spacing: 2px;
+      margin-top: 2px;
+      text-align: right;
+    }
+    .progress-bar-wrap {
+      height: 2px;
+      background: var(--border);
+      border-radius: 1px;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--grey2);
+      border-radius: 1px;
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* WEEK STRIP */
+    .week-strip {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0;
+    }
+    .week-day {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .week-day-label {
+      font-size: 8px;
+      letter-spacing: 1px;
+      color: var(--grey4);
+      text-transform: uppercase;
+    }
+    .week-day-label.today { color: #888; }
+    .week-ring-outer {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .week-ring-outer.today { border-color: #2a2a2a; }
+    .week-ring-inner {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      color: var(--grey2);
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      margin-top: 28px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      border-bottom: 1px solid transparent;
+      margin-bottom: -1px;
+      padding: 10px 0 12px;
+      color: var(--grey4);
+      font-family: var(--font);
+      font-size: 9px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .tab-btn.active {
+      color: #888;
+      border-bottom-color: #444;
+    }
+    .tab-count {
+      display: block;
+      font-size: 10px;
+      color: var(--grey5);
+      margin-top: 2px;
+    }
+    .tab-btn.active .tab-count { color: var(--grey2); }
+
+    /* HABITS */
+    .habits-list { padding: 0 24px; }
+    .habit-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      transition: opacity 0.3s;
+      animation: fadeIn 0.3s ease both;
+    }
+    .ring-wrap { position: relative; flex-shrink: 0; width: 40px; height: 40px; }
+    .ring-icon {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #444;
+      transition: color 0.3s;
+    }
+    .ring-icon.done { color: var(--teal); }
+    .habit-info { flex: 1; min-width: 0; }
+    .habit-label {
+      font-size: 12px;
+      letter-spacing: 1px;
+      color: var(--grey1);
+      text-transform: uppercase;
+      transition: color 0.3s, text-decoration 0.3s;
+    }
+    .habit-label.done {
+      color: var(--teal);
+      text-decoration: line-through;
+    }
+    .habit-hint {
+      font-size: 10px;
+      color: var(--grey3);
+      margin-top: 1px;
+      transition: color 0.3s;
+    }
+    .habit-hint.done { color: var(--teal-dim); }
+    .habit-ctrl { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+    /* Buttons */
+    .ctrl-btn {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--grey2);
+      font-family: var(--font);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.15s;
+      line-height: 1;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ctrl-btn:active { opacity: 0.5; }
+    .count-val {
+      font-size: 13px;
+      color: #777;
+      min-width: 28px;
+      text-align: center;
+      transition: color 0.3s;
+    }
+    .count-val.done { color: var(--teal); }
+    .count-unit { font-size: 9px; color: #444; margin-left: 2px; transition: color 0.3s; }
+    .count-unit.done { color: var(--teal-dim); }
+
+    .check-btn {
+      width: 36px; height: 28px;
+      border-radius: 6px;
+      border: 1px solid #222;
+      background: transparent;
+      font-family: var(--font);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--grey4);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .check-btn.done {
+      background: #0d2e2b;
+      border-color: rgba(45,212,191,0.53);
+      color: var(--teal);
+    }
+    .check-btn:active { opacity: 0.6; }
+
+    .dual-wrap { display: flex; gap: 6px; }
+    .dual-btn {
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #222;
+      background: transparent;
+      font-family: var(--font);
+      font-size: 9px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      color: var(--grey4);
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .dual-btn.done {
+      background: #0d2e2b;
+      border-color: rgba(45,212,191,0.53);
+      color: var(--teal);
+    }
+    .dual-btn:active { opacity: 0.6; }
+
+    .time-wrap { display: flex; gap: 6px; align-items: center; }
+    .time-input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--grey5);
+      border-radius: 0;
+      color: #555;
+      font-family: var(--font);
+      font-size: 11px;
+      width: 70px;
+      outline: none;
+      padding: 2px 0;
+      color-scheme: dark;
+      transition: color 0.3s, border-color 0.3s;
+    }
+    .time-input.has-val {
+      color: var(--teal);
+      border-bottom-color: rgba(45,212,191,0.27);
+    }
+    .time-arrow { color: var(--grey4); font-size: 10px; }
+
+    .steps-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .steps-input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--grey5);
+      color: #777;
+      font-family: var(--font);
+      font-size: 13px;
+      width: 80px;
+      text-align: right;
+      outline: none;
+      padding: 2px 0;
+      -moz-appearance: textfield;
+      appearance: textfield;
+      transition: color 0.3s, border-color 0.3s;
+    }
+    .steps-input::-webkit-inner-spin-button,
+    .steps-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .steps-input.done {
+      color: var(--teal);
+      border-bottom-color: rgba(45,212,191,0.33);
+    }
+    .steps-goal { font-size: 9px; color: var(--grey3); transition: color 0.3s; }
+    .steps-goal.done { color: var(--teal-dim); }
+
+    /* SLEEP SUMMARY */
+    .sleep-summary {
+      margin: 20px 24px 0;
+      padding: 14px 16px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sleep-lbl { font-size: 9px; color: var(--grey4); letter-spacing: 2px; }
+    .sleep-time { font-size: 12px; color: var(--teal); }
+    .sleep-dur { font-size: 11px; color: var(--grey2); }
+    .sleep-dur.good { color: var(--teal); }
+
+    /* BOTTOM BAR */
+    #bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 390px;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: 14px 24px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .score-lbl { font-size: 9px; color: var(--grey4); letter-spacing: 2px; text-transform: uppercase; }
+    .score-num {
+      font-size: 18px;
+      color: var(--grey2);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-top: 2px;
+      transition: color 0.3s;
+    }
+    .score-num.active { color: var(--teal); }
+    .score-num span { font-size: 9px; color: var(--grey4); letter-spacing: 1px; }
+    .dots-wrap { display: flex; gap: 4px; align-items: center; }
+    .dot {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      transition: all 0.3s ease;
+    }
+    .dot.filled { background: rgba(45,212,191,0.4); }
+    .perfect-badge {
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--teal);
+      border: 1px solid rgba(45,212,191,0.27);
+      padding: 4px 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .perfect-badge.show { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.25); }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div class="header-row">
+      <div>
+        <div class="day-label" id="day-label"></div>
+        <div class="date-label" id="date-label"></div>
+      </div>
+      <div>
+        <div class="score-pct" id="score-pct">0<span>%</span></div>
+        <div class="score-sub" id="score-sub">0/12 DONE</div>
+      </div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="week-strip" id="week-strip"></div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div class="habits-list" id="habits-list"></div>
+  <div id="sleep-summary" style="display:none" class="sleep-summary">
+    <span class="sleep-lbl">SLEEP</span>
+    <span class="sleep-time" id="sleep-time-display"></span>
+    <span class="sleep-dur" id="sleep-dur-display"></span>
+  </div>
+</div>
+
+<div id="bottom-bar">
+  <div>
+    <div class="score-lbl">Today's Score</div>
+    <div class="score-num" id="score-num">0 <span>PTS</span></div>
+  </div>
+  <div class="dots-wrap" id="dots-wrap"></div>
+  <div class="perfect-badge" id="perfect-badge">PERFECT ✓</div>
+</div>
+
+<script>
+const HABITS = [
+  { id:"water",    label:"Water",     icon:"◌", unit:"glasses", target:8,     type:"count",       group:"body",    hint:"8 glasses daily" },
+  { id:"exercise", label:"Exercise",  icon:"◎", unit:"min",     target:30,    type:"count",       group:"body",    hint:"30 min goal" },
+  { id:"steps",    label:"Steps",     icon:"◇", unit:"steps",   target:10000, type:"steps_input", group:"body",    hint:"10,000 goal" },
+  { id:"sleep",    label:"Sleep",     icon:"◐", unit:"",        target:null,  type:"time_range",  group:"body",    hint:"bedtime → wake" },
+  { id:"food",     label:"Food",      icon:"◈", unit:"meals",   target:3,     type:"count",       group:"body",    hint:"3 meals daily" },
+  { id:"shower",   label:"Shower",    icon:"◉", unit:"",        target:null,  type:"check",       group:"care",    hint:"done" },
+  { id:"skincare", label:"Skin Care", icon:"◌", unit:"",        target:null,  type:"dual_check",  group:"care",    hint:"AM · PM" },
+  { id:"haircare", label:"Hair Care", icon:"◎", unit:"",        target:null,  type:"check",       group:"care",    hint:"done" },
+  { id:"gf",       label:"Call GF",   icon:"◇", unit:"",        target:null,  type:"check",       group:"connect", hint:"done" },
+  { id:"mom",      label:"Call Mom",  icon:"◈", unit:"",        target:null,  type:"check",       group:"connect", hint:"done" },
+  { id:"work",     label:"Work",      icon:"◉", unit:"hrs",     target:8,     type:"count",       group:"mind",    hint:"8 hr goal" },
+  { id:"learn",    label:"Learn",     icon:"◐", unit:"min",     target:20,    type:"count",       group:"mind",    hint:"20 min daily" },
+];
+const GROUPS = [
+  { id:"body", label:"Body" },
+  { id:"care", label:"Care" },
+  { id:"connect", label:"Connect" },
+  { id:"mind", label:"Mind" },
+];
+const DAYS = ["S","M","T","W","T","F","S"];
+
+function pad(n){ return String(n).padStart(2,"0"); }
+function todayKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function getWeekDates(){
+  const now = new Date(), day = now.getDay();
+  return Array.from({length:7},(_,i)=>{
+    const d = new Date(now);
+    d.setDate(now.getDate()-day+i);
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  });
+}
+function initDay(){
+  const s = {};
+  HABITS.forEach(h=>{
+    if(h.type==="count"||h.type==="steps_input") s[h.id]=0;
+    else if(h.type==="check") s[h.id]=false;
+    else if(h.type==="dual_check") s[h.id]={am:false,pm:false};
+    else if(h.type==="time_range") s[h.id]={bed:"",wake:""};
+  });
+  return s;
+}
+
+// --- Persistence ---
+function loadData(){
+  try { return JSON.parse(localStorage.getItem("dq_all")||"{}"); } catch(e){ return {}; }
+}
+function saveData(d){ localStorage.setItem("dq_all", JSON.stringify(d)); }
+
+let allData = loadData();
+const today = todayKey();
+if(!allData[today]) allData[today] = initDay();
+
+function getTodayData(){ return allData[today]; }
+function setVal(id, val){
+  allData[today][id] = val;
+  saveData(allData);
+  render();
+}
+
+// --- isDone helper ---
+function isDone(habit, value){
+  if(habit.type==="count") return habit.target ? value>=habit.target : value>0;
+  if(habit.type==="steps_input") return habit.target ? value>=habit.target : value>0;
+  if(habit.type==="check") return value===true;
+  if(habit.type==="dual_check") return value&&value.am&&value.pm;
+  if(habit.type==="time_range") return value&&value.bed&&value.wake;
+  return false;
+}
+function completedCount(data){
+  return HABITS.filter(h=>isDone(h, data[h.id])).length;
+}
+
+// --- SVG Ring ---
+function makeSVGRing(val, max, done){
+  const size=40, stroke=2.5, r=(size-stroke*2)/2;
+  const circ = 2*Math.PI*r;
+  const pct = max ? Math.min(val/max,1) : (val?1:0);
+  const offset = circ*(1-pct);
+  const color = done ? "#2dd4bf" : "#3a3a3a";
+  return `<svg width="${size}" height="${size}" style="transform:rotate(-90deg);display:block;">
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#1c1c1c" stroke-width="${stroke}"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}"
+      stroke-width="${stroke}" stroke-linecap="round"
+      stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
+      style="transition:stroke-dashoffset 0.5s cubic-bezier(0.4,0,0.2,1)"/>
+  </svg>`;
+}
+
+// --- Render ---
+let activeGroup = "body";
+
+function render(){
+  const data = getTodayData();
+  const total = HABITS.length;
+  const done = completedCount(data);
+  const pct = Math.round((done/total)*100);
+
+  // Header
+  const now = new Date();
+  document.getElementById("day-label").textContent = now.toLocaleDateString("en-US",{weekday:"long"}).toUpperCase();
+  document.getElementById("date-label").textContent = now.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  const scorePct = document.getElementById("score-pct");
+  scorePct.innerHTML = `${pct}<span>%</span>`;
+  scorePct.className = "score-pct" + (done===total?" all-done":"");
+  document.getElementById("score-sub").textContent = `${done}/${total} DONE`;
+  document.getElementById("progress-fill").style.width = pct+"%";
+
+  // Week strip
+  const weekDates = getWeekDates();
+  const weekEl = document.getElementById("week-strip");
+  weekEl.innerHTML = weekDates.map((d,i)=>{
+    const isT = d===today;
+    const dayData = allData[d]||initDay();
+    const frac = completedCount(dayData)/total;
+    const deg = frac*360;
+    const bgColor = isT?"#555":"#2a2a2a";
+    return `<div class="week-day">
+      <div class="week-day-label${isT?" today":""}">${DAYS[i]}</div>
+      <div class="week-ring-outer${isT?" today":""}" style="background:conic-gradient(${bgColor} ${deg}deg, #0f0f0f ${deg}deg)">
+        <div class="week-ring-inner">${frac===1?"✓":""}</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Tabs
+  const tabsEl = document.getElementById("tabs");
+  tabsEl.innerHTML = GROUPS.map(g=>{
+    const gH = HABITS.filter(h=>h.group===g.id);
+    const gDone = gH.filter(h=>isDone(h,data[h.id])).length;
+    const active = g.id===activeGroup;
+    return `<button class="tab-btn${active?" active":""}" onclick="setGroup('${g.id}')">${g.label}<span class="tab-count">${gDone}/${gH.length}</span></button>`;
+  }).join("");
+
+  // Habits list
+  const groupHabits = HABITS.filter(h=>h.group===activeGroup);
+  const listEl = document.getElementById("habits-list");
+  listEl.innerHTML = groupHabits.map((h,i)=>{
+    const v = data[h.id];
+    const done = isDone(h,v);
+    let ringVal, ringMax;
+    if(h.type==="count"||h.type==="steps_input"){ ringVal=v; ringMax=h.target; }
+    else if(h.type==="dual_check"){ ringVal=(v.am?1:0)+(v.pm?1:0); ringMax=2; }
+    else { ringVal=done?1:0; ringMax=1; }
+
+    let ctrl = "";
+    if(h.type==="count"){
+      ctrl = `<button class="ctrl-btn" onclick="adj('${h.id}',-1)">−</button>
+        <span class="count-val${done?" done":""}">${v}<span class="count-unit${done?" done":""}">${h.unit}</span></span>
+        <button class="ctrl-btn" onclick="adj('${h.id}',1)">+</button>`;
+    } else if(h.type==="steps_input"){
+      ctrl = `<div class="steps-wrap">
+        <input class="steps-input${done?" done":""}" type="number" min="0" inputmode="numeric"
+          value="${v===0?"":v}" placeholder="0"
+          onchange="setSteps('${h.id}',this.value)" oninput="setSteps('${h.id}',this.value)" />
+        <span class="steps-goal${done?" done":""}">/ ${h.target.toLocaleString()}</span>
+      </div>`;
+    } else if(h.type==="check"){
+      ctrl = `<button class="check-btn${done?" done":""}" onclick="toggleCheck('${h.id}')">${done?"✓":"○"}</button>`;
+    } else if(h.type==="dual_check"){
+      ctrl = `<div class="dual-wrap">
+        <button class="dual-btn${v.am?" done":""}" onclick="toggleDual('${h.id}','am')">AM</button>
+        <button class="dual-btn${v.pm?" done":""}" onclick="toggleDual('${h.id}','pm')">PM</button>
+      </div>`;
+    } else if(h.type==="time_range"){
+      ctrl = `<div class="time-wrap">
+        <input class="time-input${v.bed?" has-val":""}" type="time" value="${v.bed}"
+          onchange="setTime('${h.id}','bed',this.value)" />
+        <span class="time-arrow">→</span>
+        <input class="time-input${v.wake?" has-val":""}" type="time" value="${v.wake}"
+          onchange="setTime('${h.id}','wake',this.value)" />
+      </div>`;
+    }
+
+    return `<div class="habit-row" style="animation-delay:${i*0.04}s">
+      <div class="ring-wrap">
+        ${makeSVGRing(ringVal,ringMax,done)}
+        <span class="ring-icon${done?" done":""}">${h.icon}</span>
+      </div>
+      <div class="habit-info">
+        <div class="habit-label${done?" done":""}">${h.label}</div>
+        <div class="habit-hint${done?" done":""}">${h.hint}</div>
+      </div>
+      <div class="habit-ctrl">${ctrl}</div>
+    </div>`;
+  }).join("");
+
+  // Sleep summary
+  const sleepVal = data["sleep"];
+  const sleepEl = document.getElementById("sleep-summary");
+  if(sleepVal && sleepVal.bed && sleepVal.wake){
+    sleepEl.style.display = "flex";
+    document.getElementById("sleep-time-display").textContent = `${sleepVal.bed} → ${sleepVal.wake}`;
+    const [bh,bm] = sleepVal.bed.split(":").map(Number);
+    const [wh,wm] = sleepVal.wake.split(":").map(Number);
+    let diff = (wh*60+wm)-(bh*60+bm);
+    if(diff<0) diff+=1440;
+    const hrs = Math.floor(diff/60), min = diff%60;
+    const durEl = document.getElementById("sleep-dur-display");
+    durEl.textContent = `${hrs}h ${min}m`;
+    durEl.className = "sleep-dur" + (hrs>=7?" good":"");
+  } else {
+    sleepEl.style.display = "none";
+  }
+
+  // Bottom bar
+  const scoreNum = document.getElementById("score-num");
+  scoreNum.innerHTML = `${done*10} <span>PTS</span>`;
+  scoreNum.className = "score-num" + (done>0?" active":"");
+
+  const dotsEl = document.getElementById("dots-wrap");
+  dotsEl.innerHTML = Array.from({length:total},(_,i)=>{
+    const filled = i<done;
+    return `<div class="dot${filled?" filled":""}" style="width:${filled?14:6}px"></div>`;
+  }).join("");
+
+  const badge = document.getElementById("perfect-badge");
+  badge.className = "perfect-badge" + (done===total?" show":"");
+}
+
+// --- Actions ---
+function setGroup(id){ activeGroup=id; render(); }
+function adj(id, delta){
+  const v = allData[today][id]||0;
+  setVal(id, Math.max(0,v+delta));
+}
+function setSteps(id, raw){
+  const v = parseInt(raw,10);
+  setVal(id, isNaN(v)?0:Math.max(0,v));
+}
+function toggleCheck(id){ setVal(id, !allData[today][id]); }
+function toggleDual(id,part){
+  const v = allData[today][id]||{am:false,pm:false};
+  setVal(id, {...v,[part]:!v[part]});
+}
+function setTime(id, part, val){
+  const v = allData[today][id]||{bed:"",wake:""};
+  setVal(id, {...v,[part]:val});
+}
+
+// --- Service Worker (offline support) ---
+if('serviceWorker' in navigator){
+  const swCode = `
+    const CACHE = 'dq-v1';
+    self.addEventListener('install', e => {
+      e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/'])));
+      self.skipWaiting();
+    });
+    self.addEventListener('fetch', e => {
+      e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    });
+  `;
+  const swBlob = new Blob([swCode], {type:'text/javascript'});
+  const swURL = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swURL).catch(()=>{});
+}
+
+// --- Init ---
+render();
+</script>
+</body>
+</html>
